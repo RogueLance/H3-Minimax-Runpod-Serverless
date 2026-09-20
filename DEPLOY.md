@@ -15,6 +15,7 @@ You need:
 1. A **GitHub** account
 2. A **RunPod** account
 3. A **Hugging Face** token (`hf_...`) for model bake / private LoRAs
+4. Myst is found at https://huggingface.co/lynaNSFW/mysticxxx_MM_H3/blob/main/MysticXXX_MMH3-V4.safetensors
 
 ### Create your RunPod account (referral credit)
 
