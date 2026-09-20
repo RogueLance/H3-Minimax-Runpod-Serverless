@@ -4,13 +4,15 @@ Deploy **[MiniMax H3](https://www.minimax.io/blog/minimax-h3)** video generation
 
 This repo is a ready-to-build ComfyUI worker: bake the base models once, push an image, create a serverless endpoint, and call it with JSON.
 
+
+## Image policy
+
+Bake MiniMax H3 weights into the image. **Never** rely on downloading the multi‑GB H3/Qwen stack when a serverless worker starts. Small LoRAs (MysticXXX, realism, etc.) download at job runtime from Hugging Face.
+
 **Full RunPod GitHub deploy walkthrough:** see **[DEPLOY.md](./DEPLOY.md)**.
 
 ---
 
-## Hub / Docker build note
-
-RunPod Hub builds use a **slim Dockerfile**: ComfyUI + custom nodes only. MiniMax H3 weights, turbo LoRAs, and Myst are **not** baked into the image (Hub timeouts). `entrypoint.sh` downloads or volume-links them on first worker start. Expect a longer cold start the first time; later starts on a warm host are faster.
 
 ## Get RunPod credit
 
@@ -33,7 +35,7 @@ Use that credit toward GPUs for building, testing, and running this MiniMax H3 s
 Extras:
 
 - **Turbo** (default on) — fewer steps via baked LightX2V turbo LoRAs  
-- **Myst style LoRA** (default on) — downloaded at worker start from release [`myst-lora-v1`](https://github.com/RogueLance/H3-Minimax-Runpod-Serverless/releases/tag/myst-lora-v1) (not Docker-baked; avoids Hub timeouts)  
+- **Myst / MysticXXX style LoRA** — job-time Hugging Face download via `lora_url` (not baked; not downloaded in entrypoint)  
 - **Realism People LoRA** — optional; downloaded at job time from Hugging Face  
 - **Any Hub LoRA** — paste a Hugging Face file URL + `hf_token`  
 - **Power Lora Loader** — turbo + realism + Myst + extras in one stack  
@@ -244,7 +246,7 @@ All modes use **Power Lora Loader (rgthree)**:
 
 1. **Slot 1** — turbo (baked)  
 2. **Slot 2** — realism (runtime if `realism_lora: true`)  
-3. **Slot 3** — Myst (default on; entrypoint from release)  
+3. **Slot 3+** — style LoRAs from job `lora_url` / `loras` (e.g. MysticXXX)  
 4. **Slot 4+** — extras from `lora_url` / `loras`
 
 Disable Myst with `"myst_lora": false`. Disable realism with `"realism_lora": false`.
@@ -313,7 +315,7 @@ Decode base64 to an `.mp4` file in your app or article demo.
 | Base diffusion / text encoders / VAE | Yes |
 | T2V/I2V turbo (`lightx2v` fl2v) | Yes |
 | R2V turbo (`lightx2v` ref2v) | Yes |
-| Myst style LoRA (GitHub release) | No — entrypoint download at worker start |
+| Myst / MysticXXX LoRA (Hugging Face) | No — job-time `lora_url` only |
 | Realism People | No — job-time download |
 | Style / template LoRAs | No — via `lora_url` + optional `hf_token` |
 

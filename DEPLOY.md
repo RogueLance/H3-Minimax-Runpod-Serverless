@@ -15,7 +15,9 @@ You need:
 1. A **GitHub** account
 2. A **RunPod** account
 3. A **Hugging Face** token (`hf_...`) for model bake / private LoRAs
-4. Myst is found at https://huggingface.co/lynaNSFW/mysticxxx_MM_H3/blob/main/MysticXXX_MMH3-V4.safetensors
+4. Myst / MysticXXX LoRA (runtime download, not baked):  
+   `https://huggingface.co/lynaNSFW/mysticxxx_MM_H3/resolve/main/MysticXXX_MMH3-V4.safetensors`  
+   (blob page: https://huggingface.co/lynaNSFW/mysticxxx_MM_H3/blob/main/MysticXXX_MMH3-V4.safetensors)
 
 ### Create your RunPod account (referral credit)
 
@@ -26,6 +28,14 @@ New to RunPod? Register with this link and get a **one-time credit from $5–$50
 Use that credit to build and run this MiniMax H3 endpoint.
 
 ---
+
+
+## Image policy (important)
+
+- **Bake** MiniMax H3 base weights + turbo LoRAs into the Docker image (the working stack).
+- **Do not** ship a slim image that downloads those multi‑GB weights when a serverless worker starts — that burns GPU credits.
+- **Do** download small style LoRAs (Myst / MysticXXX, realism, etc.) at **job runtime** via `lora_url` / `realism_lora` + `HF_TOKEN`.
+- RunPod Hub `docker build` is capped at **30 minutes**. A full weight bake often exceeds that. Prefer keeping the known-good baked image tag (e.g. `…:95d9b22fc`) and avoid Hub auto-deploys of slim Dockerfiles. Build full images offline / on a long-running machine and push to a registry if you need a new bake.
 
 ## Step 1 — Login and connect GitHub
 
@@ -233,7 +243,7 @@ You can also pass refs as base64 strings inside `reference_images`.
     "turbo_mode": true,
     "realism_lora": true,
     "hf_token": "hf_YOUR_TOKEN_HERE",
-    "lora_url": "https://huggingface.co/ORG/REPO/resolve/main/your_lora.safetensors",
+    "lora_url": "https://huggingface.co/lynaNSFW/mysticxxx_MM_H3/resolve/main/MysticXXX_MMH3-V4.safetensors",
     "lora_strength": 0.8,
     "seed": 42
   }
