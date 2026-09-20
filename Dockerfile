@@ -66,17 +66,20 @@ COPY extra_model_paths.yaml /ComfyUI/extra_model_paths.yaml
 RUN fetch_model.sh \
       Comfy-Org/MiniMax-H3 \
       vae/minimax_h3_audio_vae_fp32.safetensors \
-      /ComfyUI/models/vae/minimax_h3_audio_vae_fp32.safetensors
+      /ComfyUI/models/vae/minimax_h3_audio_vae_fp32.safetensors \
+    || echo "⚠ audio VAE bake skipped — volume/entrypoint fallback"
 
 RUN fetch_model.sh \
       Comfy-Org/MiniMax-H3 \
       vae/minimax_h3_video_vae_fp16.safetensors \
-      /ComfyUI/models/vae/minimax_h3_video_vae_fp16.safetensors
+      /ComfyUI/models/vae/minimax_h3_video_vae_fp16.safetensors \
+    || echo "⚠ video VAE bake skipped — volume/entrypoint fallback"
 
 RUN fetch_model.sh \
       Comfy-Org/MiniMax-H3 \
       diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors \
-      /ComfyUI/models/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors
+      /ComfyUI/models/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors \
+    || echo "⚠ fl2va bake skipped — volume/entrypoint fallback"
 
 # Turbo / Lightning 8-step LoRA — T2V/I2V (toggle via turbo_mode)
 RUN fetch_model.sh \
@@ -99,10 +102,8 @@ RUN fetch_model.sh \
       /ComfyUI/models/loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors \
     || echo "⚠ R2V turbo LoRA bake skipped — volume/runtime fallback"
 
-# Myst style LoRA — from RogueLance release (not git). No HF_TOKEN needed.
-RUN curl -fL --retry 3 -o /ComfyUI/models/loras/Myst.safetensors \
-      https://github.com/RogueLance/H3-Minimax-Runpod-Serverless/releases/download/myst-lora-v1/Myst.safetensors \
-    || echo "⚠ Myst LoRA bake skipped — volume/entrypoint fallback"
+# Myst is NOT baked here (Hub builds time out on long layers).
+# entrypoint.sh downloads Myst.safetensors from GitHub release myst-lora-v1 at worker start.
 
 # Realism People + other style/template LoRAs are NOT baked.
 # Jobs request them via realism_lora / loras[] + optional hf_token (runtime Hub download).
