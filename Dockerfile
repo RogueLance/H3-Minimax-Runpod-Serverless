@@ -62,58 +62,10 @@ RUN chmod +x /usr/local/bin/fetch_model.sh
 
 COPY extra_model_paths.yaml /ComfyUI/extra_model_paths.yaml
 
-# Bake one weight per layer; each fetch_model.sh call purges /tmp/hf_home
-RUN fetch_model.sh \
-      Comfy-Org/MiniMax-H3 \
-      vae/minimax_h3_audio_vae_fp32.safetensors \
-      /ComfyUI/models/vae/minimax_h3_audio_vae_fp32.safetensors \
-    || echo "⚠ audio VAE bake skipped — volume/entrypoint fallback"
-
-RUN fetch_model.sh \
-      Comfy-Org/MiniMax-H3 \
-      vae/minimax_h3_video_vae_fp16.safetensors \
-      /ComfyUI/models/vae/minimax_h3_video_vae_fp16.safetensors \
-    || echo "⚠ video VAE bake skipped — volume/entrypoint fallback"
-
-RUN fetch_model.sh \
-      Comfy-Org/MiniMax-H3 \
-      diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors \
-      /ComfyUI/models/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors \
-    || echo "⚠ fl2va bake skipped — volume/entrypoint fallback"
-
-# Turbo / Lightning 8-step LoRA — T2V/I2V (toggle via turbo_mode)
-RUN fetch_model.sh \
-      lightx2v/Minimax-h3-Turbo \
-      minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors \
-      /ComfyUI/models/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors \
-    || echo "⚠ fl2v turbo LoRA bake skipped — volume/runtime fallback"
-
-# R2V UNET (ref2va) — pruned int8, same family as fl2va bake
-RUN fetch_model.sh \
-      Comfy-Org/MiniMax-H3 \
-      diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors \
-      /ComfyUI/models/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors \
-    || echo "⚠ R2V UNET bake skipped — volume/runtime fallback"
-
-# R2V turbo / Lightning 4-step LoRA
-RUN fetch_model.sh \
-      lightx2v/Minimax-h3-Turbo \
-      minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors \
-      /ComfyUI/models/loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors \
-    || echo "⚠ R2V turbo LoRA bake skipped — volume/runtime fallback"
-
-# Myst is NOT baked here (Hub builds time out on long layers).
-# entrypoint.sh downloads Myst.safetensors from GitHub release myst-lora-v1 at worker start.
-
-# Realism People + other style/template LoRAs are NOT baked.
-# Jobs request them via realism_lora / loras[] + optional hf_token (runtime Hub download).
-
-# Qwen3-VL-32B — shared by T2V/I2V/R2V; Hub build may time out → entrypoint fallback
-RUN fetch_model.sh \
-      Comfy-Org/MiniMax-H3 \
-      text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors \
-      /ComfyUI/models/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors \
-    || echo "⚠ text encoder bake skipped — volume/runtime fallback"
+# Hub builds time out baking multi‑GB MiniMax/Qwen weights.
+# Do NOT download models during `docker build` — entrypoint.sh resolve_model
+# fetches (or links from /runpod-volume) at worker start. Local/dev builds can
+# still pre-warm by running fetch_model.sh manually or attaching a volume.
 
 # Final scrub — keep baked /ComfyUI/models only
 RUN rm -rf /tmp/hf_home /root/.cache/huggingface /root/.cache/pip /var/tmp/* \

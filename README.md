@@ -8,6 +8,10 @@ This repo is a ready-to-build ComfyUI worker: bake the base models once, push an
 
 ---
 
+## Hub / Docker build note
+
+RunPod Hub builds use a **slim Dockerfile**: ComfyUI + custom nodes only. MiniMax H3 weights, turbo LoRAs, and Myst are **not** baked into the image (Hub timeouts). `entrypoint.sh` downloads or volume-links them on first worker start. Expect a longer cold start the first time; later starts on a warm host are faster.
+
 ## Get RunPod credit
 
 Need a RunPod account to deploy this worker?
