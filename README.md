@@ -29,9 +29,10 @@ Use that credit toward GPUs for building, testing, and running this MiniMax H3 s
 Extras:
 
 - **Turbo** (default on) — fewer steps via baked LightX2V turbo LoRAs  
+- **Myst style LoRA** (default on) — baked/fetched from release [`myst-lora-v1`](https://github.com/RogueLance/H3-Minimax-Runpod-Serverless/releases/tag/myst-lora-v1)  
 - **Realism People LoRA** — optional; downloaded at job time from Hugging Face  
 - **Any Hub LoRA** — paste a Hugging Face file URL + `hf_token`  
-- **Power Lora Loader** — turbo + realism + style LoRAs in one stack  
+- **Power Lora Loader** — turbo + realism + Myst + extras in one stack  
 
 ---
 
@@ -73,6 +74,7 @@ What gets **baked** into the image:
 
 What is **not** baked (downloaded when a job needs them):
 
+- Myst style LoRA (GitHub release `myst-lora-v1`)  
 - Realism People LoRA  
 - Style / community LoRAs (via `lora_url` / `loras`)
 
@@ -238,9 +240,10 @@ All modes use **Power Lora Loader (rgthree)**:
 
 1. **Slot 1** — turbo (baked)  
 2. **Slot 2** — realism (runtime if `realism_lora: true`)  
-3. **Slot 3+** — extras from `lora_url` / `loras`
+3. **Slot 3** — Myst (default on; release/bake)  
+4. **Slot 4+** — extras from `lora_url` / `loras`
 
-Disable realism with `"realism_lora": false`.
+Disable Myst with `"myst_lora": false`. Disable realism with `"realism_lora": false`.
 
 ---
 
@@ -253,6 +256,8 @@ Disable realism with `"realism_lora": false`.
 | `image_url` / `image_base64` | string | — | I2V start frame |
 | `reference_images` | list | — | R2V: 1–4 refs (url / base64 / path) |
 | `turbo_mode` | bool | `true` | Enable turbo LoRA |
+| `myst_lora` | bool | `true` | Enable Myst style LoRA (release/bake) |
+| `myst_lora_strength` | float | `1.0` | Myst LoRA strength |
 | `realism_lora` | bool | `true` | Enable realism LoRA (runtime download) |
 | `hf_token` | string | — | Hub token for private LoRA downloads |
 | `lora_url` / `lora_urls` | string / list | — | Hugging Face download link(s) |
@@ -304,6 +309,7 @@ Decode base64 to an `.mp4` file in your app or article demo.
 | Base diffusion / text encoders / VAE | Yes |
 | T2V/I2V turbo (`lightx2v` fl2v) | Yes |
 | R2V turbo (`lightx2v` ref2v) | Yes |
+| Myst style LoRA (GitHub release) | Yes (or entrypoint download) |
 | Realism People | No — job-time download |
 | Style / template LoRAs | No — via `lora_url` + optional `hf_token` |
 

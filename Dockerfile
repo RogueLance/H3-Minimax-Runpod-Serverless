@@ -99,7 +99,12 @@ RUN fetch_model.sh \
       /ComfyUI/models/loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors \
     || echo "⚠ R2V turbo LoRA bake skipped — volume/runtime fallback"
 
-# Realism People + style/template LoRAs are NOT baked.
+# Myst style LoRA — from RogueLance release (not git). No HF_TOKEN needed.
+RUN curl -fL --retry 3 -o /ComfyUI/models/loras/Myst.safetensors \
+      https://github.com/RogueLance/H3-Minimax-Runpod-Serverless/releases/download/myst-lora-v1/Myst.safetensors \
+    || echo "⚠ Myst LoRA bake skipped — volume/entrypoint fallback"
+
+# Realism People + other style/template LoRAs are NOT baked.
 # Jobs request them via realism_lora / loras[] + optional hf_token (runtime Hub download).
 
 # Qwen3-VL-32B — shared by T2V/I2V/R2V; Hub build may time out → entrypoint fallback
