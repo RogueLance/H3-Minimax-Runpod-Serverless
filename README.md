@@ -29,7 +29,7 @@ Use that credit toward GPUs for building, testing, and running this MiniMax H3 s
 Extras:
 
 - **Turbo** (default on) — fewer steps via baked LightX2V turbo LoRAs  
-- **Myst style LoRA** (default on) — baked/fetched from release [`myst-lora-v1`](https://github.com/RogueLance/H3-Minimax-Runpod-Serverless/releases/tag/myst-lora-v1)  
+- **Myst style LoRA** (default on) — downloaded at worker start from release [`myst-lora-v1`](https://github.com/RogueLance/H3-Minimax-Runpod-Serverless/releases/tag/myst-lora-v1) (not Docker-baked; avoids Hub timeouts)  
 - **Realism People LoRA** — optional; downloaded at job time from Hugging Face  
 - **Any Hub LoRA** — paste a Hugging Face file URL + `hf_token`  
 - **Power Lora Loader** — turbo + realism + Myst + extras in one stack  
@@ -74,7 +74,7 @@ What gets **baked** into the image:
 
 What is **not** baked (downloaded when a job needs them):
 
-- Myst style LoRA (GitHub release `myst-lora-v1`)  
+- Myst style LoRA (GitHub release `myst-lora-v1`, entrypoint download)  
 - Realism People LoRA  
 - Style / community LoRAs (via `lora_url` / `loras`)
 
@@ -240,7 +240,7 @@ All modes use **Power Lora Loader (rgthree)**:
 
 1. **Slot 1** — turbo (baked)  
 2. **Slot 2** — realism (runtime if `realism_lora: true`)  
-3. **Slot 3** — Myst (default on; release/bake)  
+3. **Slot 3** — Myst (default on; entrypoint from release)  
 4. **Slot 4+** — extras from `lora_url` / `loras`
 
 Disable Myst with `"myst_lora": false`. Disable realism with `"realism_lora": false`.
@@ -309,7 +309,7 @@ Decode base64 to an `.mp4` file in your app or article demo.
 | Base diffusion / text encoders / VAE | Yes |
 | T2V/I2V turbo (`lightx2v` fl2v) | Yes |
 | R2V turbo (`lightx2v` ref2v) | Yes |
-| Myst style LoRA (GitHub release) | Yes (or entrypoint download) |
+| Myst style LoRA (GitHub release) | No — entrypoint download at worker start |
 | Realism People | No — job-time download |
 | Style / template LoRAs | No — via `lora_url` + optional `hf_token` |
 
