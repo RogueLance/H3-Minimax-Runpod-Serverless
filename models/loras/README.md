@@ -1,24 +1,16 @@
 # ComfyUI LoRAs
 
-Weights are **not** stored in git (except via GitHub Releases for Myst).
+Weights are **not** stored in git.
 
 | File | When | Notes |
 | --- | --- | --- |
 | `minimax_h3_fl2v_turbo_8step_…` | Docker bake | T2V/I2V turbo |
 | `minimax_h3_ref2v_turbo_4step_…` | Docker bake | R2V turbo |
-| `Myst.safetensors` | Entrypoint (worker start) | Style LoRA from release [`myst-lora-v1`](https://github.com/RogueLance/H3-Minimax-Runpod-Serverless/releases/tag/myst-lora-v1); toggle with `myst_lora` (default on). Not baked in Docker (Hub timeouts). |
-| Realism People | Job runtime | `fal/MiniMax-H3-Realism-People-LoRA` when `realism_lora: true` |
-| Style / template LoRAs | Job runtime | Pass via `loras` + optional `hf_token` |
+| MysticXXX / Myst style | Job runtime | `lora_url` → Hugging Face resolve URL + optional `hf_token` / `HF_TOKEN` |
+| Realism People | Job runtime | `realism_lora: true` → Hub download |
 
-```bash
-docker build --build-arg HF_TOKEN=hf_xxx -t minimax_h3_t2v .
-# Build token is for base models + turbo only — Myst downloads at entrypoint from GitHub release
-```
+**Do not** bake style LoRAs into Hub builds. **Do** bake MiniMax base weights (see root Dockerfile). Never ship a slim image that downloads the multi‑GB H3 stack on worker start.
 
-Example (paste Hub download link + token):
+Example resolve URL:
 
-```json
-"hf_token": "hf_...",
-"lora_url": "https://huggingface.co/here4code/my-loras/resolve/main/iggon_h3_doggy.safetensors",
-"lora_strength": 0.8
-```
+`https://huggingface.co/lynaNSFW/mysticxxx_MM_H3/resolve/main/MysticXXX_MMH3-V4.safetensors`

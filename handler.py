@@ -87,11 +87,13 @@ DEFAULT_R2V_TURBO_LORA = "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safeten
 DEFAULT_REALISM_LORA_REPO = "fal/MiniMax-H3-Realism-People-LoRA"
 DEFAULT_REALISM_LORA_HUB_FILE = "h3-realism-people-t2v-i2v-r2v.safetensors"
 DEFAULT_REALISM_LORA = "h3-realism-people-t2v-i2v-r2v(r34l1sm).safetensors"
-DEFAULT_MYST_LORA = "Myst.safetensors"
+DEFAULT_MYST_LORA = "MysticXXX_MMH3-V4.safetensors"
 DEFAULT_MYST_LORA_URL = (
-    "https://github.com/RogueLance/H3-Minimax-Runpod-Serverless/"
-    "releases/download/myst-lora-v1/Myst.safetensors"
+    "https://huggingface.co/lynaNSFW/mysticxxx_MM_H3/resolve/main/"
+    "MysticXXX_MMH3-V4.safetensors"
 )
+# Also accept legacy bake/volume filename from the Comfy pod
+_LEGACY_MYST_NAMES = ("Myst.safetensors", "MysticXXX_MMH3-V4.safetensors")
 DEFAULT_R2V_PROMPT_PREFIX = "r34l1sm , create realism style cinematic video."
 DEFAULT_R2V_UNET = "minimax_h3_ref2va_pruned_int8_convrot.safetensors"
 FPS = 24
@@ -1281,18 +1283,26 @@ def _set_power_lora_slot(inputs, slot, lora_name, strength, enabled=True):
 
 
 def ensure_myst_on_disk(job_input=None):
-    """Ensure Myst.safetensors is under ComfyUI/models/loras (bake, volume, or release URL)."""
-    found = _find_lora_on_disk(DEFAULT_MYST_LORA)
-    if found:
-        return found
-    dest = Path(COMFY_INPUT_DIR).parent / "models" / "loras" / DEFAULT_MYST_LORA
-    # COMFY_INPUT_DIR is /ComfyUI/input → parent is /ComfyUI
+    """Ensure Myst/MysticXXX is under ComfyUI/models/loras (volume cache or HF at job time)."""
+    for name in _LEGACY_MYST_NAMES:
+        found = _find_lora_on_disk(name)
+        if found:
+            return found
     dest = Path("/ComfyUI/models/loras") / DEFAULT_MYST_LORA
     dest.parent.mkdir(parents=True, exist_ok=True)
     url = (job_input or {}).get("myst_lora_url") or DEFAULT_MYST_LORA_URL
-    logger.info("▶ downloading Myst LoRA from %s", url)
+    token = _job_hf_token(job_input or {})
+    logger.info("▶ downloading Myst LoRA from %s (auth=%s)", url, "yes" if token else "no")
     try:
-        urllib.request.urlretrieve(url, dest)
+        req = urllib.request.Request(url)
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
+        with urllib.request.urlopen(req, timeout=600) as resp, open(dest, "wb") as out:
+            while True:
+                chunk = resp.read(1024 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
     except Exception as e:
         raise RuntimeError(f"Failed to download Myst LoRA from {url}: {e}") from e
     if not dest.is_file() or dest.stat().st_size == 0:
