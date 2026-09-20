@@ -87,6 +87,11 @@ DEFAULT_R2V_TURBO_LORA = "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safeten
 DEFAULT_REALISM_LORA_REPO = "fal/MiniMax-H3-Realism-People-LoRA"
 DEFAULT_REALISM_LORA_HUB_FILE = "h3-realism-people-t2v-i2v-r2v.safetensors"
 DEFAULT_REALISM_LORA = "h3-realism-people-t2v-i2v-r2v(r34l1sm).safetensors"
+DEFAULT_MYST_LORA = "Myst.safetensors"
+DEFAULT_MYST_LORA_URL = (
+    "https://github.com/RogueLance/H3-Minimax-Runpod-Serverless/"
+    "releases/download/myst-lora-v1/Myst.safetensors"
+)
 DEFAULT_R2V_PROMPT_PREFIX = "r34l1sm , create realism style cinematic video."
 DEFAULT_R2V_UNET = "minimax_h3_ref2va_pruned_int8_convrot.safetensors"
 FPS = 24
@@ -1274,10 +1279,54 @@ def _set_power_lora_slot(inputs, slot, lora_name, strength, enabled=True):
     }
 
 
+
+def ensure_myst_on_disk(job_input=None):
+    """Ensure Myst.safetensors is under ComfyUI/models/loras (bake, volume, or release URL)."""
+    found = _find_lora_on_disk(DEFAULT_MYST_LORA)
+    if found:
+        return found
+    dest = Path(COMFY_INPUT_DIR).parent / "models" / "loras" / DEFAULT_MYST_LORA
+    # COMFY_INPUT_DIR is /ComfyUI/input → parent is /ComfyUI
+    dest = Path("/ComfyUI/models/loras") / DEFAULT_MYST_LORA
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    url = (job_input or {}).get("myst_lora_url") or DEFAULT_MYST_LORA_URL
+    logger.info("▶ downloading Myst LoRA from %s", url)
+    try:
+        urllib.request.urlretrieve(url, dest)
+    except Exception as e:
+        raise RuntimeError(f"Failed to download Myst LoRA from {url}: {e}") from e
+    if not dest.is_file() or dest.stat().st_size == 0:
+        raise RuntimeError(f"Myst LoRA download produced empty file at {dest}")
+    logger.info("✅ Myst LoRA ready (%s bytes)", dest.stat().st_size)
+    return DEFAULT_MYST_LORA
+
+
+def _apply_myst_power_slot(inputs, job_input, start_slot=3):
+    """Place Myst on power-lora slot start_slot when myst_lora is enabled. Returns next free slot."""
+    myst_enabled = _coerce_bool(
+        job_input.get("myst_lora", job_input.get("myst_lora_enabled", True)),
+        default=True,
+    )
+    myst_name = (
+        job_input.get("myst_lora_name")
+        or job_input.get("myst_lora_file")
+        or DEFAULT_MYST_LORA
+    )
+    myst_strength = float(
+        job_input.get("myst_lora_strength", job_input.get("myst_strength", 1.0))
+    )
+    if myst_enabled:
+        on_disk = _find_lora_on_disk(myst_name) or ensure_myst_on_disk(job_input)
+        myst_name = _lora_basename(on_disk) if on_disk else myst_name
+    else:
+        myst_strength = 0.0
+    _set_power_lora_slot(inputs, start_slot, myst_name, myst_strength, enabled=myst_enabled)
+    return start_slot + 1, myst_enabled, myst_name, myst_strength
+
 def apply_r2v_power_lora(prompt, job_input, turbo_mode):
     """
     Configure R2V node 162 (Power Lora Loader rgthree):
-      lora_1 = turbo (baked), lora_2 = realism (runtime if on), lora_3+ = extras
+      lora_1 = turbo (baked), lora_2 = realism, lora_3 = Myst (default on), lora_4+ = extras
     """
     node_id = R2V_NODE_POWER_LORA
     if node_id not in prompt:
@@ -1395,8 +1444,11 @@ def apply_r2v_power_lora(prompt, job_input, turbo_mode):
         realism_strength = 0.0
     _set_power_lora_slot(inputs, 2, realism_name, realism_strength, enabled=realism_enabled)
 
+    slot, myst_enabled, myst_name, myst_strength = _apply_myst_power_slot(
+        inputs, job_input, start_slot=3
+    )
+
     extras = _parse_lora_entries(job_input)
-    slot = 3
     applied_extras = 0
     for spec in extras:
         name = resolve_lora_name(
@@ -1413,11 +1465,13 @@ def apply_r2v_power_lora(prompt, job_input, turbo_mode):
         applied_extras += 1
 
     logger.info(
-        "🧩 R2V Power LoRA: turbo=%s@%s realism=%s@%s extras=%s",
+        "🧩 R2V Power LoRA: turbo=%s@%s realism=%s@%s myst=%s@%s extras=%s",
         turbo_name,
         inputs["lora_1"]["strength"],
         realism_name,
         inputs["lora_2"]["strength"],
+        myst_name,
+        myst_strength if myst_enabled else 0.0,
         applied_extras,
     )
 
@@ -1425,7 +1479,7 @@ def apply_r2v_power_lora(prompt, job_input, turbo_mode):
 def apply_ti2v_power_lora(prompt, job_input, turbo_mode):
     """
     Configure T2V/I2V node 105:121 (Power Lora Loader rgthree):
-      lora_1 = fl2v turbo (baked), lora_2 = realism (runtime if on), lora_3+ = extras
+      lora_1 = fl2v turbo (baked), lora_2 = realism, lora_3 = Myst (default on), lora_4+ = extras
     Model switch (105:122) always takes this node so realism/extras apply with turbo on or off.
     """
     node_id = NODE_POWER_LORA
@@ -1546,8 +1600,11 @@ def apply_ti2v_power_lora(prompt, job_input, turbo_mode):
         realism_strength = 0.0
     _set_power_lora_slot(inputs, 2, realism_name, realism_strength, enabled=realism_enabled)
 
+    slot, myst_enabled, myst_name, myst_strength = _apply_myst_power_slot(
+        inputs, job_input, start_slot=3
+    )
+
     extras = _parse_lora_entries(job_input)
-    slot = 3
     applied_extras = 0
     for spec in extras:
         name = resolve_lora_name(
@@ -1564,11 +1621,13 @@ def apply_ti2v_power_lora(prompt, job_input, turbo_mode):
         applied_extras += 1
 
     logger.info(
-        "🧩 T2V/I2V Power LoRA: turbo=%s@%s realism=%s@%s extras=%s",
+        "🧩 T2V/I2V Power LoRA: turbo=%s@%s realism=%s@%s myst=%s@%s extras=%s",
         turbo_name,
         inputs["lora_1"]["strength"],
         realism_name,
         inputs["lora_2"]["strength"],
+        myst_name,
+        myst_strength if myst_enabled else 0.0,
         applied_extras,
     )
 

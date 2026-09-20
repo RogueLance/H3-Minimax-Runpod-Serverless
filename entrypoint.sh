@@ -125,8 +125,37 @@ resolve_model \
   "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors" \
   "lightx2v/Minimax-h3-Turbo"
 
-# Realism + style LoRAs are NOT prefetched here.
-# Jobs pull them at runtime via handler ensure_lora_on_disk (realism_lora / loras[] + hf_token).
+# Myst style LoRA (release asset; optional volume override)
+MYST_NAME="Myst.safetensors"
+MYST_DEST="/ComfyUI/models/loras/${MYST_NAME}"
+MYST_URL="https://github.com/RogueLance/H3-Minimax-Runpod-Serverless/releases/download/myst-lora-v1/Myst.safetensors"
+mkdir -p /ComfyUI/models/loras
+if [ ! -f "$MYST_DEST" ] || [ ! -s "$MYST_DEST" ]; then
+  for p in \
+      "/runpod-volume/loras/${MYST_NAME}" \
+      "/runpod-volume/models/loras/${MYST_NAME}" \
+      "/runpod-volume/ComfyUI/models/loras/${MYST_NAME}"; do
+    if [ -f "$p" ] && [ -s "$p" ]; then
+      ln -sfn "$p" "$MYST_DEST"
+      echo "✅ Myst LoRA linked from volume: $p"
+      break
+    fi
+  done
+fi
+if [ ! -f "$MYST_DEST" ] || [ ! -s "$MYST_DEST" ]; then
+  echo "▶ Myst LoRA missing — downloading from GitHub release…"
+  if curl -fL --retry 3 -o "$MYST_DEST" "$MYST_URL"; then
+    echo "✅ Myst LoRA downloaded ($(du -h "$MYST_DEST" | awk '{print $1}'))"
+  else
+    rm -f "$MYST_DEST"
+    echo "⚠ Myst LoRA download failed — jobs with myst_lora=true will error until fixed"
+  fi
+elif [ -f "$MYST_DEST" ] && [ -s "$MYST_DEST" ]; then
+  echo "✅ Myst LoRA present ($(du -h "$MYST_DEST" | awk '{print $1}'))"
+fi
+
+# Realism + other style LoRAs are NOT prefetched here (except Myst above).
+# Jobs pull realism via handler ensure_lora_on_disk (realism_lora / loras[] + hf_token).
 # Optional: if a network volume already has realism, link it for a warm cache hit.
 REALISM_HUB="h3-realism-people-t2v-i2v-r2v.safetensors"
 REALISM_ALIAS="h3-realism-people-t2v-i2v-r2v(r34l1sm).safetensors"
