@@ -30,6 +30,10 @@ WORKFLOW_R2V_PATHS = {
     2: os.path.join(WORKFLOW_DIR, "minimax_h3_r2v_2ref_api.json"),
     3: os.path.join(WORKFLOW_DIR, "minimax_h3_r2v_3ref_api.json"),
     4: os.path.join(WORKFLOW_DIR, "minimax_h3_r2v_4ref_api.json"),
+    5: os.path.join(WORKFLOW_DIR, "minimax_h3_r2v_5ref_api.json"),
+    6: os.path.join(WORKFLOW_DIR, "minimax_h3_r2v_6ref_api.json"),
+    7: os.path.join(WORKFLOW_DIR, "minimax_h3_r2v_7ref_api.json"),
+    8: os.path.join(WORKFLOW_DIR, "minimax_h3_r2v_8ref_api.json"),
 }
 
 # Shared node IDs (T2V + I2V official API exports)
@@ -75,7 +79,7 @@ R2V_NODE_SCHEDULER = "170"
 R2V_NODE_SAMPLER = "169"
 R2V_NODE_H3 = "178"
 R2V_NODE_OUTPUT = "176"
-R2V_LOAD_IMAGE_NODES = ["148", "149", "155", "156"]  # ref 0..3
+R2V_LOAD_IMAGE_NODES = ["148", "149", "155", "156", "200", "201", "202", "203"]  # ref 0..7
 
 DEFAULT_PROMPT = (
     "Realistic live-action cinematic look, shallow depth of field, film grain, "
@@ -1660,12 +1664,12 @@ def apply_realism_and_dynamic_loras(prompt, job_input, mode, turbo_mode=True):
 
 def collect_reference_images(job_input, temp_dir):
     """
-    Collect up to 4 R2V reference images from job input.
+    Collect up to 8 R2V reference images from job input.
     Supports:
       - reference_images / ref_images / refs / images: list of url|base64|path|dict
-      - reference_image / reference_image_2..4
-      - ref_image / ref_image_0..3 / ref_image_url / ref_image_base64
-      - image_1..image_4
+      - reference_image / reference_image_2..8
+      - ref_image / ref_image_0..7 / ref_image_url / ref_image_base64
+      - image_1..image_8
     """
     collected = []
 
@@ -1704,13 +1708,13 @@ def collect_reference_images(job_input, temp_dir):
         raw = job_input.get(list_key)
         if isinstance(raw, (list, tuple)):
             for item in raw:
-                if len(collected) >= 4:
+                if len(collected) >= 8:
                     break
                 _add_media(item, len(collected))
 
     # Named singles
     named_keys = []
-    for i in range(0, 4):
+    for i in range(0, 8):
         named_keys.extend(
             [
                 f"reference_image_{i}",
@@ -1743,20 +1747,32 @@ def collect_reference_images(job_input, temp_dir):
         "reference_image_2",
         "reference_image_3",
         "reference_image_4",
+        "reference_image_5",
+        "reference_image_6",
+        "reference_image_7",
+        "reference_image_8",
         "ref_image_2",
         "ref_image_3",
         "ref_image_4",
+        "ref_image_5",
+        "ref_image_6",
+        "ref_image_7",
+        "ref_image_8",
         "image_1",
         "image_2",
         "image_3",
         "image_4",
+        "image_5",
+        "image_6",
+        "image_7",
+        "image_8",
     ):
         if key not in named_keys:
             named_keys.append(key)
 
     seen_paths = set(collected)
     for key in named_keys:
-        if len(collected) >= 4:
+        if len(collected) >= 8:
             break
         if not job_input.get(key):
             continue
@@ -1966,11 +1982,17 @@ def handler(job):
         if not ref_paths:
             return {
                 "error": (
-                    "R2V mode requires 1–4 reference images "
+                    "R2V mode requires 1–8 reference images "
                     "(reference_images / ref_image_url / reference_image_base64 / …)."
                 )
             }
         n_refs = len(ref_paths)
+        if n_refs not in WORKFLOW_R2V_PATHS:
+            return {
+                "error": (
+                    f"R2V supports 1–8 reference images; got {n_refs}."
+                )
+            }
         workflow_path = WORKFLOW_R2V_PATHS[n_refs]
     else:
         workflow_path = WORKFLOW_I2V_PATH if mode == "i2v" else WORKFLOW_T2V_PATH
@@ -2048,7 +2070,7 @@ def handler(job):
         if "ref_image_size" in job_input:
             prompt[R2V_NODE_H3]["inputs"]["ref_image_size"] = str(job_input["ref_image_size"])
 
-        # Stage reference images into LoadImage nodes 148/149/155/156
+        # Stage reference images into LoadImage nodes 148/149/155/156/200..203
         for i, src in enumerate(ref_paths):
             node_id = R2V_LOAD_IMAGE_NODES[i]
             staged = stage_into_comfy_input(src, f"{uuid.uuid4().hex}_ref_{i}.png")
